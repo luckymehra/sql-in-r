@@ -1,0 +1,150 @@
+---
+title: "Running R, Python, and SQL in Rmarkdown"
+subtitle: 'Using penguins dataset'
+author: "Lucky Mehra"
+date: "2/26/2021"
+output:
+  rmdformats::robobook:
+    code_folding: show
+    self_contained: true
+    thumbnails: false
+    lightbox: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+# set up for SQL
+library(DBI)
+library(palmerpenguins)
+
+# connection
+con <- dbConnect(RSQLite::SQLite(), dbname = ":memory:")
+
+# write tables in database
+dbWriteTable(con, "penguins", penguins)
+```
+
+## Subset dataset
+
+Select columns `species`, `island`, `sex`, and `bill_length_mm`.
+
+And filter rows where `body_mass_g` between 3000 and 4000.
+
+### R
+
+```{r}
+library(tidyverse)
+penguins %>% 
+  dplyr::filter(body_mass_g <= 4000 & body_mass_g >= 3000) %>% 
+  dplyr::select(species, island, sex, bill_length_mm)
+```
+
+### Python
+
+```{python}
+# import modules
+import pandas as pd
+
+# access penguins data from r chunks
+penguins_py = r.penguins
+
+# apply the filtering and selecting
+(penguins_py
+  .query('(body_mass_g <= 4000) & (body_mass_g >= 3000)') # equivalent to dplyr::filter
+  .filter(['species', 'island', 'sex', 'bill_length_mm'])) # equivalent to dplyr::select
+```
+
+### SQL
+
+```{sql, connection=con}
+SELECT species,
+        island, 
+        sex, 
+        bill_length_mm
+FROM penguins
+WHERE body_mass_g BETWEEN 3000 AND 4000
+```
+
+## Create new columns
+
+### R
+
+```{r}
+penguins %>% 
+  mutate(ratio_length_depth = bill_length_mm / bill_depth_mm) %>% 
+  dplyr::select(species, island, bill_length_mm,
+                bill_depth_mm, ratio_length_depth)
+```
+### Python
+
+```{python}
+# create new column
+penguins_py['ratio_length_depth'] = penguins_py.bill_length_mm / penguins_py.bill_depth_mm
+
+# print desired columns
+(penguins_py
+  .filter(['species', 'island', 'bill_length_mm',
+  'bill_depth_mm', 'ratio_length_depth']))
+```
+
+### SQL
+
+```{sql connection=con}
+SELECT species,
+        island,
+        bill_length_mm,
+        bill_depth_mm,
+        bill_length_mm / bill_depth_mm AS ratio_length_depth --create new column
+FROM penguins
+```
+
+## Do 'group by'
+
+Calculate average, minimum, and maximum of `bill_length_mm` by `species`. Then, arrange/sort/order
+the species from highest mean bill length to lowest mean bill length i.e. the species with the
+highest mean bill length should be the first row.
+
+### R
+
+```{r}
+penguins %>% 
+  group_by(species) %>% 
+  summarize(mean_bill_length = mean(bill_length_mm, na.rm = TRUE),
+            min_bill_length  = min(bill_length_mm, na.rm = TRUE),
+            max_bill_length = max(bill_length_mm, na.rm = TRUE)) %>% 
+  arrange(mean_bill_length %>% desc())
+```
+
+### Python
+
+```{python}
+# import pandas as pd
+(penguins_py
+  .groupby('species')
+  .bill_length_mm
+  .agg(['mean', 'min', 'max'])
+  .sort_values('mean', ascending=False))
+```
+
+### SQL
+
+```{sql connection=con}
+SELECT species,
+        AVG(bill_length_mm) AS mean_bill_length,
+        MIN(bill_length_mm) AS min_bill_length,
+        MAX(bill_length_mm) AS max_bill_length
+FROM penguins
+GROUP BY species
+ORDER BY mean_bill_length DESC
+```
+
+
+
+
+
+
+
+
+
+
