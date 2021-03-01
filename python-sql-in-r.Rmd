@@ -40,6 +40,7 @@ penguins %>%
   dplyr::select(species, island, sex, bill_length_mm)
 ```
 
+
 ### Python
 
 ```{python}
@@ -136,15 +137,6 @@ SELECT species,
         MAX(bill_length_mm) AS max_bill_length
 FROM penguins
 GROUP BY species
+--HAVING species = 'Gentoo' # subsetting on group by variable
 ORDER BY mean_bill_length DESC
 ```
-
-
-
-
-
-
-
-
-
-
